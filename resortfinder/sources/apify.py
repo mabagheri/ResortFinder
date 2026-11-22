@@ -1,6 +1,6 @@
-"""Booking.com and Expedia ratings through Apify scrapers ("actors").
+"""Booking.com, TripAdvisor and Expedia ratings through Apify scrapers ("actors").
 
-Neither site has a public ratings API, so we run a ready-made Apify scraper once for the
+These sites have no free public ratings API (TripAdvisor's official API asks for a card), so we run a ready-made Apify scraper once for the
 whole area, then match its results to our hotels by name and GPS position.
 Apify gives $5 of free usage per month. Docs: https://docs.apify.com/api/v2
 
@@ -12,20 +12,36 @@ by the area typed in the app, and "{max_items}" by the number of results to scra
 from __future__ import annotations
 
 import json
+import time
 from typing import Any, Optional
 
 from ..http import SourceError, check_response, make_session
 from ..matching import best_match
-from ..models import BOOKING, EXPEDIA, Hotel, SiteRating
+from ..models import BOOKING, EXPEDIA, SITE_LABELS, TRIPADVISOR, Hotel, SiteRating
 from .base import RatingSource
 
-APIFY_URL = "https://api.apify.com/v2/acts/{actor}/run-sync-get-dataset-items"
+APIFY_API = "https://api.apify.com/v2"
+FINISHED = {"SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"}
 
 DEFAULTS = {
     BOOKING: {
         "actor": "voyager/booking-scraper",
         "input": {"search": "{area}", "maxItems": "{max_items}", "currency": "USD", "language": "en-gb"},
         "scale": 10,
+    },
+    TRIPADVISOR: {
+        "actor": "maxcopell/tripadvisor",
+        "input": {
+            "query": "{area}",
+            "maxItemsPerQuery": "{max_items}",
+            "includeHotels": True,
+            "includeRestaurants": False,
+            "includeAttractions": False,
+            "includeVacationRentals": False,
+            "language": "en",
+            "currency": "USD",
+        },
+        "scale": 5,
     },
     EXPEDIA: {
         # No default: pick an Expedia/Hotels.com actor on https://apify.com/store and set it in secrets.
@@ -39,7 +55,7 @@ DEFAULTS = {
 NAME_KEYS = ("name", "hotelName", "title")
 RATING_KEYS = ("rating", "reviewScore", "guestRating", "score", "reviewsScore", "overallRating")
 REVIEWS_KEYS = ("reviews", "reviewsCount", "reviewCount", "numberOfReviews", "totalReviews")
-URL_KEYS = ("url", "link", "hotelUrl")
+URL_KEYS = ("url", "webUrl", "link", "hotelUrl")
 LAT_KEYS = ("lat", "latitude")
 LNG_KEYS = ("lng", "lon", "longitude")
 
@@ -124,7 +140,7 @@ class ApifySource(RatingSource):
         actor_input: Optional[dict | str] = None,
         scale: Optional[float] = None,
         max_items: int = 150,
-        timeout_seconds: int = 280,
+        timeout_seconds: int = 15 * 60,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -145,22 +161,56 @@ class ApifySource(RatingSource):
             raise SourceError(f"{site}: no Apify actor configured (set {site.upper()}_APIFY_ACTOR)")
 
     def fetch_area(self, area: str) -> list[dict]:
+        """Run the scraper for the area and return its results (cached, except failures)."""
         body = _fill(self.actor_input, {"area": area, "max_items": self.max_items})
+        return self.cache.get_or_set(self._cache_key(area), lambda: self._run(body))
 
-        def run() -> list[dict]:
-            resp = self.session.post(
-                APIFY_URL.format(actor=self.actor),
-                params={"token": self.token, "timeout": self.timeout, "format": "json"},
-                json=body,
-                timeout=self.timeout + 30,
+    def _cache_key(self, area: str) -> tuple:
+        body = _fill(self.actor_input, {"area": area, "max_items": self.max_items})
+        return (self.site, self.actor, json.dumps(body, sort_keys=True))
+
+    def _run(self, body: dict) -> list[dict]:
+        """Start the scraper, wait until it finishes, then download its results."""
+        name = f"{SITE_LABELS[self.site]} (Apify {self.actor})"
+        params = {"token": self.token}
+        resp = self.session.post(f"{APIFY_API}/acts/{self.actor}/runs", params=params, json=body, timeout=60)
+        run = (check_response(resp, name) or {}).get("data") or {}
+        deadline = time.monotonic() + self.timeout
+        while run.get("status") not in FINISHED:
+            if time.monotonic() > deadline:
+                raise SourceError(f"{name}: still running after {self.timeout // 60} minutes; try again later")
+            resp = self.session.get(f"{APIFY_API}/actor-runs/{run['id']}",
+                                    params={**params, "waitForFinish": 60}, timeout=90)
+            run = (check_response(resp, name) or {}).get("data") or {}
+        if run["status"] != "SUCCEEDED":
+            raise SourceError(f"{name}: the scraper run ended with status {run['status']}")
+        resp = self.session.get(f"{APIFY_API}/datasets/{run['defaultDatasetId']}/items",
+                                params={**params, "format": "json", "clean": "true"}, timeout=120)
+        data = check_response(resp, name)
+        return data if isinstance(data, list) else []
+
+    def _check_usable(self, items: list[dict], area: str, label: str) -> None:
+        """Explain clearly when the scraper's output can't be used (wrong input or changed fields)."""
+        if not items:
+            raise SourceError(
+                f"{label}: the Apify scraper {self.actor} returned no results for '{area}'. "
+                f"Check its input ({self.site.upper()}_APIFY_INPUT) on its Apify page."
             )
-            data = check_response(resp, f"{self.site} (Apify {self.actor})")
-            return data if isinstance(data, list) else []
-
-        return self.cache.get_or_set((self.site, self.actor, json.dumps(body, sort_keys=True)), run)
+        if not any(parse_item(self.site, i, self.scale) for i in items):
+            fields = sorted({k for i in items[:5] for k in i})[:25]
+            raise SourceError(
+                f"{label}: the Apify scraper {self.actor} returned {len(items)} results, but none had a "
+                f"rating field this app knows. Fields received: {', '.join(fields)}"
+            )
 
     def rate(self, area, hotels, progress=None):
-        items = self.fetch_area(area)
+        items = [i for i in self.fetch_area(area) if isinstance(i, dict)]
+        label = SITE_LABELS[self.site]
+        try:
+            self._check_usable(items, area, label)
+        except SourceError:
+            self.cache.discard(self._cache_key(area))  # so a retry really runs the scraper again
+            raise
         results: dict[str, Optional[SiteRating]] = {}
         for done, hotel in enumerate(hotels, start=1):
             item = best_match(

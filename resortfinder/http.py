@@ -67,6 +67,10 @@ class TTLCache:
             self._data[key] = (now, value)
         return value
 
+    def discard(self, key: Any) -> None:
+        with self._lock:
+            self._data.pop(key, None)
+
     def clear(self) -> None:
         with self._lock:
             self._data.clear()

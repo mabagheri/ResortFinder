@@ -65,7 +65,7 @@ def site_available(site: str) -> tuple[bool, str]:
     if site == GOOGLE:
         return bool(KEYS["serpapi"]), "SERPAPI_KEY"
     if site == TRIPADVISOR:
-        return bool(KEYS["tripadvisor"]), "TRIPADVISOR_API_KEY"
+        return bool(KEYS["tripadvisor"] or KEYS["apify"]), "APIFY_TOKEN (or TRIPADVISOR_API_KEY)"
     if site == BOOKING:
         return bool(KEYS["apify"]), "APIFY_TOKEN"
     if site == EXPEDIA:
@@ -82,9 +82,14 @@ def build_sources(live: bool, max_items: int):
     sources = {}
     if KEYS["places"]:
         sources[GOOGLE] = GooglePlacesSource(KEYS["places"], cache=cache)
-    if site_available(TRIPADVISOR)[0]:
+    if KEYS["tripadvisor"]:  # official API, if you have a key
         sources[TRIPADVISOR] = TripAdvisorSource(
             KEYS["tripadvisor"], referer=secret("TRIPADVISOR_REFERER") or None, cache=cache
+        )
+    elif KEYS["apify"]:  # otherwise the free Apify scraper
+        sources[TRIPADVISOR] = ApifySource(
+            TRIPADVISOR, KEYS["apify"], actor=secret("TRIPADVISOR_APIFY_ACTOR") or None,
+            actor_input=secret("TRIPADVISOR_APIFY_INPUT") or None, max_items=max_items, cache=cache,
         )
     if site_available(BOOKING)[0]:
         sources[BOOKING] = ApifySource(
@@ -147,9 +152,11 @@ def column_config(df: pd.DataFrame) -> dict:
 
 def estimate_calls(max_hotels: int, sites: list[str]) -> str:
     parts = [f"SerpApi ≈ {math.ceil(max_hotels / 20)} searches"]
-    if TRIPADVISOR in sites:
+    if TRIPADVISOR in sites and KEYS["tripadvisor"]:
         parts.append(f"TripAdvisor ≈ {2 * max_hotels} calls")
-    for site in (BOOKING, EXPEDIA):
+    for site in (TRIPADVISOR, BOOKING, EXPEDIA):
+        if site == TRIPADVISOR and KEYS["tripadvisor"]:
+            continue
         if site in sites:
             parts.append(f"{SITE_LABELS[site]}: 1 Apify run")
     if GOOGLE in sites and KEYS["places"]:
@@ -262,6 +269,12 @@ with st.container(border=True):
         if next(cols).button("Refresh from the web",
                              help=f"Collects everything again: {estimate_calls(max_hotels, live_sites)}"):
             run_collect()
+
+if live:
+    not_set = [f"**{SITE_LABELS[s]}** (add {site_available(s)[1]})" for s in ALL_SITES if not site_available(s)[0]]
+    if not_set:
+        st.info("These sites can't be fetched until their key is in the app's Secrets: " + "; ".join(not_set)
+                + ". After adding a key, click **Fetch missing sites**.", icon="🔑")
 
 for message in st.session_state.pop("messages", []):
     st.warning(message)

@@ -34,14 +34,15 @@ Details:
 | Site | Source | Key (Streamlit secret) | Free tier | Needed? |
 |---|---|---|---|---|
 | Hotel list, class, Google rating | SerpApi Google Hotels | `SERPAPI_KEY` | 250 searches/month, no card | **Yes**, the only required key |
-| TripAdvisor | [TripAdvisor Content API](https://www.tripadvisor.com/developers) | `TRIPADVISOR_API_KEY` | 5,000 calls/month (2 per hotel); asks for a card | Optional |
-| Booking.com | Apify `voyager/booking-scraper` | `APIFY_TOKEN` | $5 credit/month, no card | Optional |
+| TripAdvisor | Apify `maxcopell/tripadvisor` | `APIFY_TOKEN` | $5 credit/month, no card | Recommended |
+| Booking.com | Apify `voyager/booking-scraper` | `APIFY_TOKEN` (same) | same $5 credit | Recommended |
+| TripAdvisor (alternative) | [TripAdvisor Content API](https://www.tripadvisor.com/developers) | `TRIPADVISOR_API_KEY` | 5,000 calls/month; asks for a card | Optional; used instead of Apify if set |
 | Expedia | an Apify Expedia scraper of your choice | `APIFY_TOKEN` + `EXPEDIA_APIFY_ACTOR` | same $5 credit | Optional |
 | Google Maps (exact) | Google Places API | `GOOGLE_PLACES_API_KEY` | free monthly quota; needs a billing account | Not needed: Google Hotels already gives the Google rating |
 | Permanent storage of area files | GitHub | `GITHUB_TOKEN` + `GITHUB_REPO` | free | Recommended on Streamlit Cloud |
 
-Collecting one area of 100 hotels uses about 5 SerpApi searches, 200 TripAdvisor calls and one
-Apify run per site. Thanks to the saved files, that happens once per area, not once per search.
+With `SERPAPI_KEY` + `APIFY_TOKEN` you get **Google, TripAdvisor and Booking.com** ratings for free.
+Collecting one area of 100 hotels uses about 5 SerpApi searches and one Apify scraper run per site. Thanks to the saved files, that happens once per area, not once per search.
 
 A site with no key is skipped. With **no keys at all** the app runs on **fictional demo data**.
 
