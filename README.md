@@ -11,36 +11,54 @@ Feature 2 (cheapest m-night stay in a date range) is planned; see
 
 ## How it works
 
-1. **Find hotels**: Google Hotels (through [SerpApi](https://serpapi.com)) lists the hotels of the area,
-   with their class, Google rating, position and a price.
-2. **Cheap filter first**: hotels that fail on class or Google rating are dropped before any other
-   site is called, to save API quota.
-3. **Other sites**: each remaining hotel is looked up on TripAdvisor (official Content API) and on
-   Booking.com / Expedia (Apify scrapers). The same hotel is matched across sites by **name and GPS
-   distance**. Sister hotels such as "Hyatt Ziva" and "Hyatt Zilara" are kept apart.
-4. **Decide**: Booking.com and Expedia scores out of 10 are divided by 2. A hotel passes only if every
-   selected site meets the minimum. You choose whether a hotel that is *not found* on a site is
-   excluded (strict) or judged on the other sites.
+1. **Collect an area once (uses APIs).** The first time you search an area, the app collects
+   **every** hotel there (all classes, all ratings) from Google Hotels, looks each one up on the other
+   sites, and saves everything to `data/areas/<area>__<all-inclusive|all-hotels>.csv`.
+2. **Filter for free.** Hotel class, minimum rating, per-site minimums, minimum review count, and how to
+   treat hotels missing from a site are applied to the saved file, so results update instantly and use
+   no API calls. Ratings may be a little old, which is fine for choosing a resort.
+3. **Update when you want.** *Fetch missing sites* adds only a site the file doesn't have yet (e.g.
+   after you add a new key). *Refresh from the web* collects the area again.
 
-The results table has links to every site so you can check each match. Excluded hotels are listed
-with the reason, and the results can be downloaded as CSV.
+Details:
+- The same hotel is matched across sites by **name words and GPS distance**. Sister hotels such as
+  "Hyatt Ziva" and "Hyatt Zilara" are kept apart.
+- Booking.com and Expedia scores out of 10 are divided by 2 (9.0/10 = 4.5/5).
+- The file records the date each site was checked, so "not found on Booking.com" is different from
+  "Booking.com not checked yet".
+- Results have links to every site (to verify a match), a list of excluded hotels with the reason,
+  CSV download and a map. Area files can be downloaded as CSV/Excel and uploaded again.
 
-## Data sources and keys
+## What it costs (nothing, with free tiers)
 
 | Site | Source | Key (Streamlit secret) | Free tier | Needed? |
 |---|---|---|---|---|
-| Hotel list, class, Google rating | SerpApi Google Hotels | `SERPAPI_KEY` | 250 searches/month | **Yes**, for live mode |
-| TripAdvisor | [TripAdvisor Content API](https://www.tripadvisor.com/developers) | `TRIPADVISOR_API_KEY` | 5,000 calls/month (2 per hotel) | Optional |
-| Booking.com | Apify `voyager/booking-scraper` | `APIFY_TOKEN` | $5 usage/month | Optional |
-| Expedia | an Apify Expedia scraper of your choice | `APIFY_TOKEN` + `EXPEDIA_APIFY_ACTOR` | same | Optional |
-| Google Maps (exact) | Google Places API | `GOOGLE_PLACES_API_KEY` | pay as you go | Optional (Google Hotels' rating is used otherwise) |
+| Hotel list, class, Google rating | SerpApi Google Hotels | `SERPAPI_KEY` | 250 searches/month, no card | **Yes**, the only required key |
+| TripAdvisor | [TripAdvisor Content API](https://www.tripadvisor.com/developers) | `TRIPADVISOR_API_KEY` | 5,000 calls/month (2 per hotel); asks for a card | Optional |
+| Booking.com | Apify `voyager/booking-scraper` | `APIFY_TOKEN` | $5 credit/month, no card | Optional |
+| Expedia | an Apify Expedia scraper of your choice | `APIFY_TOKEN` + `EXPEDIA_APIFY_ACTOR` | same $5 credit | Optional |
+| Google Maps (exact) | Google Places API | `GOOGLE_PLACES_API_KEY` | free monthly quota; needs a billing account | Not needed: Google Hotels already gives the Google rating |
+| Permanent storage of area files | GitHub | `GITHUB_TOKEN` + `GITHUB_REPO` | free | Recommended on Streamlit Cloud |
 
-A site with no key is greyed out in the app. With **no keys at all** the app runs on **fictional
-demo data**, so you can try the interface right away.
+Collecting one area of 100 hotels uses about 5 SerpApi searches, 200 TripAdvisor calls and one
+Apify run per site. Thanks to the saved files, that happens once per area, not once per search.
+
+A site with no key is skipped. With **no keys at all** the app runs on **fictional demo data**.
 
 > Booking.com and Expedia have no public ratings API, so third-party scrapers are used. Their output
 > fields can change; the actor and its input can be swapped in secrets without code changes (see
 > `.streamlit/secrets.toml.example`). Using scrapers may conflict with those sites' terms of use.
+
+## Where the saved files live
+
+Streamlit Community Cloud **deletes files the app writes whenever it restarts or sleeps**. Three ways
+to keep your area files:
+
+1. **GitHub (recommended, automatic):** add `GITHUB_TOKEN` and `GITHUB_REPO` to the secrets. Each saved
+   area is committed to the `resort-data` branch of that repo and loaded from there after a restart.
+   Use a fine-grained token limited to this one repository with "Contents: Read and write".
+2. **Download / upload:** in the app, *Saved area files* → download CSV or Excel, and upload it later.
+3. **Commit them yourself:** put CSV files in `data/areas/` of the deployed branch.
 
 ## Run on Streamlit Community Cloud
 
@@ -48,7 +66,8 @@ demo data**, so you can try the interface right away.
 2. Go to [share.streamlit.io](https://share.streamlit.io), click **Create app**, choose this repo,
    branch, and main file `streamlit_app.py`.
 3. In **Advanced settings → Secrets**, paste the contents of `.streamlit/secrets.toml.example`
-   with your keys filled in. Secrets can also be changed later in the app's **Settings**.
+   with your keys filled in (only `SERPAPI_KEY` is required; add `GITHUB_TOKEN`/`GITHUB_REPO` to keep
+   saved areas). Secrets can also be changed later in the app's **Settings**.
 4. Deploy.
 
 ## Run locally
@@ -66,7 +85,8 @@ pytest                                                       # tests use no netw
 ```
 streamlit_app.py            UI
 resortfinder/
-  pipeline.py               discover → pre-filter → enrich → filter
+  pipeline.py               collect (APIs, once per area) / apply_filters (free)
+  store.py                  area files: CSV/Excel, local folder + GitHub copy
   filters.py                the pass/fail rules (class, minimum rating, missing data, review count)
   matching.py               same hotel across sites (name words + GPS distance)
   models.py                 Hotel, SiteRating (everything normalized to /5)

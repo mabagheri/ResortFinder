@@ -60,6 +60,9 @@ class Hotel:
     currency: Optional[str] = None
     amenities: list[str] = field(default_factory=list)
     ratings: dict[str, Optional[SiteRating]] = field(default_factory=dict)
+    # Date (YYYY-MM-DD) each site was checked. A site that was checked but has no rating
+    # means "not found there"; a site missing here means "not checked yet".
+    checked: dict[str, str] = field(default_factory=dict)
 
     @property
     def has_coordinates(self) -> bool:

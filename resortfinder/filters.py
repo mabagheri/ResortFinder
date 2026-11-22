@@ -54,7 +54,7 @@ def evaluate(hotel: Hotel, criteria: Criteria) -> list[str]:
     reasons = check_class(hotel, criteria)
     for site in criteria.sites:
         reasons += check_site(hotel, site, criteria)
-    if not reasons and criteria.missing_policy == MISSING_IGNORE:
+    if not reasons and criteria.sites and criteria.missing_policy == MISSING_IGNORE:
         if not any(hotel.ratings.get(s) and hotel.ratings[s].rating is not None for s in criteria.sites):
             reasons.append("no rating found on any selected site")
     return reasons

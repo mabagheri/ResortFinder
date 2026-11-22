@@ -1,18 +1,19 @@
-"""Feature 1: find the hotels of an area and keep those that meet the rating criteria.
+"""Feature 1 in two steps.
 
-Order of work (cheapest checks first, to save API quota):
-1. Discover hotels in the area (Google Hotels), already filtered by hotel class.
-2. Drop hotels that fail on class or on the Google rating (both known from step 1).
-3. Look up the remaining hotels on the other selected sites.
-4. Apply all criteria and return passed + excluded hotels with the reasons.
+collect()        Uses the APIs. Finds ALL hotels of an area (every class, every rating) and
+                 looks each one up on the chosen sites. Its result is saved per area
+                 (see store.py), so this runs once per area, not once per search.
+apply_filters()  No API calls. Applies hotel class / minimum rating / etc. to saved hotels,
+                 so changing the criteria is free and instant.
 """
 
 from __future__ import annotations
 
+import datetime as dt
 from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import Callable, Iterable, Optional
 
-from .filters import Criteria, check_class, check_site, evaluate
+from .filters import Criteria, evaluate
 from .http import SourceError
 from .models import GOOGLE, SITE_LABELS, Hotel
 from .sources.base import RatingSource
@@ -26,85 +27,94 @@ class Result:
     excluded: list[tuple[Hotel, list[str]]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     discovered: int = 0
+    sites_used: list[str] = field(default_factory=list)
 
 
-def run(
+def collect(
     area: str,
     discovery,
     sources: dict[str, RatingSource],
-    criteria: Criteria,
     *,
     all_inclusive: bool = True,
-    max_hotels: int = 60,
+    max_hotels: int = 100,
     discovery_options: Optional[dict] = None,
+    existing: Optional[list[Hotel]] = None,
+    only_sites: Optional[Iterable[str]] = None,
     status: Optional[StatusFn] = None,
-) -> Result:
+) -> tuple[list[Hotel], list[str]]:
+    """Return (hotels with ratings, warnings).
+
+    existing:   hotels already saved for the area; when given, no new hotel search is made.
+    only_sites: look up only these sites (e.g. the ones missing from the saved file).
+    """
     status = status or (lambda _msg, _frac: None)
-    result = Result()
+    today = dt.date.today().isoformat()
+    warnings: list[str] = []
 
-    status(f"Finding hotels in {area}…", 0.0)
-    google_min = criteria.minimum_for(GOOGLE) if GOOGLE in criteria.sites else 0.0
-    hotels = discovery.search(
-        area,
-        all_inclusive=all_inclusive,
-        hotel_classes=criteria.hotel_classes,
-        min_google_rating=google_min,
-        max_hotels=max_hotels,
-        **(discovery_options or {}),
-    )
-    result.discovered = len(hotels)
+    if existing is None:
+        status(f"Finding all hotels in {area}…", 0.0)
+        hotels = discovery.search(
+            area,
+            all_inclusive=all_inclusive,
+            hotel_classes=(2, 3, 4, 5),  # everything: class is filtered later, for free
+            min_google_rating=0.0,
+            max_hotels=max_hotels,
+            **(discovery_options or {}),
+        )
+        for hotel in hotels:
+            hotel.checked[GOOGLE] = today  # Google Hotels gives the Google rating
+    else:
+        hotels = existing
 
-    # Step 2: cheap pre-filter on data we already have.
-    candidates = []
-    pre_checked = [GOOGLE] if GOOGLE in criteria.sites and GOOGLE not in sources else []
-    for hotel in hotels:
-        reasons = check_class(hotel, criteria)
-        for site in pre_checked:
-            reasons += check_site(hotel, site, criteria)
-        if reasons:
-            result.excluded.append((hotel, reasons))
-        else:
-            candidates.append(hotel)
-
-    # Step 3: other sites, one at a time.
-    sites = [s for s in criteria.sites if s in sources]
+    wanted = set(only_sites) if only_sites is not None else set(sources)
+    sites = [s for s in sources if s in wanted]
     for index, site in enumerate(sites):
         label = SITE_LABELS[site]
-        base = 0.1 + 0.85 * index / max(len(sites), 1)
-        span = 0.85 / max(len(sites), 1)
+        base = 0.1 + 0.85 * index / len(sites)
+        span = 0.85 / len(sites)
 
         def progress(done: int, total: int, label=label, base=base, span=span) -> None:
             status(f"Checking {label}: {done}/{total}", base + span * done / max(total, 1))
 
         status(f"Checking {label}…", base)
         try:
-            ratings = sources[site].rate(area, candidates, progress)
+            ratings = sources[site].rate(area, hotels, progress)
         except SourceError as exc:
-            result.warnings.append(f"{label} was skipped: {exc}")
+            warnings.append(f"{label} was skipped: {exc}")
             continue
-        for hotel in candidates:
+        for hotel in hotels:
             hotel.ratings[site] = ratings.get(hotel.key)
+            hotel.checked[site] = today
 
-    # Step 4: final decision. A site that failed completely is not held against hotels.
-    failed_sites = {s for s in sites if any(w.startswith(SITE_LABELS[s]) for w in result.warnings)}
-    final = Criteria(**{**criteria.__dict__, "sites": [s for s in criteria.sites if s not in failed_sites]})
-    for hotel in candidates:
+    status("Done", 1.0)
+    return hotels, warnings
+
+
+def apply_filters(hotels: list[Hotel], criteria: Criteria, *, all_inclusive_only: bool = False) -> Result:
+    """Split hotels into passed / excluded. Sites never checked for this area are skipped."""
+    result = Result(discovered=len(hotels))
+    checked_sites = [s for s in criteria.sites if any(s in h.checked for h in hotels)]
+    unchecked = [SITE_LABELS[s] for s in criteria.sites if s not in checked_sites]
+    if unchecked and hotels:
+        result.warnings.append(
+            f"No saved data for {', '.join(unchecked)} in this area, so it was not used. "
+            "Use “Fetch missing sites” to add it."
+        )
+    final = Criteria(**{**criteria.__dict__, "sites": checked_sites})
+    result.sites_used = checked_sites
+
+    for hotel in hotels:
         reasons = evaluate(hotel, final)
+        if all_inclusive_only and hotel.is_all_inclusive is False:
+            reasons.append("not all-inclusive")
         if reasons:
             result.excluded.append((hotel, reasons))
         else:
             result.passed.append(hotel)
-
-    result.passed.sort(key=lambda h: _average(h, final.sites), reverse=True)
-    status("Done", 1.0)
+    result.passed.sort(key=lambda h: average_rating(h, checked_sites) or 0, reverse=True)
     return result
 
 
-def _average(hotel: Hotel, sites: list[str]) -> float:
-    values = [hotel.ratings[s].rating for s in sites if hotel.ratings.get(s) and hotel.ratings[s].rating is not None]
-    return sum(values) / len(values) if values else 0.0
-
-
 def average_rating(hotel: Hotel, sites: list[str]) -> Optional[float]:
-    value = _average(hotel, sites)
-    return round(value, 2) if value else None
+    values = [hotel.ratings[s].rating for s in sites if hotel.ratings.get(s) and hotel.ratings[s].rating is not None]
+    return round(sum(values) / len(values), 2) if values else None
