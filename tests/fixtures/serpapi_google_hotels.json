@@ -1,0 +1,13 @@
+{
+  "properties": [
+    {"type": "hotel", "name": "Sample Grand Resort", "property_token": "tok1",
+     "link": "https://example.com/grand", "gps_coordinates": {"latitude": 21.10, "longitude": -86.76},
+     "hotel_class": "5-star hotel", "extracted_hotel_class": 5, "overall_rating": 4.7, "reviews": 3210,
+     "rate_per_night": {"lowest": "$512", "extracted_lowest": 512},
+     "amenities": ["All-inclusive available", "Pool", "Spa"]},
+    {"type": "hotel", "name": "Sample Budget Inn", "property_token": "tok2",
+     "hotel_class": "3-star hotel", "overall_rating": 4.1, "reviews": 800},
+    {"type": "vacation rental", "name": "Sample Condo", "property_token": "tok3", "overall_rating": 4.9}
+  ],
+  "serpapi_pagination": {"current_from": 1, "current_to": 3}
+}

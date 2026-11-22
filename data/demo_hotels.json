@@ -1,0 +1,369 @@
+{
+ "note": "Fictional hotels and ratings for demo mode only. Not real data.",
+ "area": "Cancun",
+ "hotels": [
+  {
+   "name": "Coral Lagoon Resort (Demo)",
+   "hotel_class": 4,
+   "latitude": 21.03,
+   "longitude": -86.78,
+   "price_per_night": 365,
+   "all_inclusive": true,
+   "ratings": {
+    "google": {
+     "rating": 4.7,
+     "reviews": 1842
+    },
+    "tripadvisor": {
+     "rating": 5.0,
+     "reviews": 507
+    },
+    "booking": null,
+    "expedia": {
+     "rating": 9.5,
+     "reviews": 1085
+    }
+   }
+  },
+  {
+   "name": "Playa Turquesa Grand (Demo)",
+   "hotel_class": 3,
+   "latitude": 21.042,
+   "longitude": -86.776,
+   "price_per_night": 357,
+   "all_inclusive": true,
+   "ratings": {
+    "google": {
+     "rating": 4.2,
+     "reviews": 3957
+    },
+    "tripadvisor": {
+     "rating": 4.0,
+     "reviews": 4996
+    },
+    "booking": {
+     "rating": 8.3,
+     "reviews": 1005
+    },
+    "expedia": null
+   }
+  },
+  {
+   "name": "Sol Maya Beach Club (Demo)",
+   "hotel_class": 3,
+   "latitude": 21.054,
+   "longitude": -86.772,
+   "price_per_night": 304,
+   "all_inclusive": true,
+   "ratings": {
+    "google": {
+     "rating": 4.3,
+     "reviews": 5354
+    },
+    "tripadvisor": {
+     "rating": 4.0,
+     "reviews": 4879
+    },
+    "booking": {
+     "rating": 8.3,
+     "reviews": 1625
+    },
+    "expedia": null
+   }
+  },
+  {
+   "name": "Isla Azul Palace (Demo)",
+   "hotel_class": 3,
+   "latitude": 21.066,
+   "longitude": -86.768,
+   "price_per_night": 349,
+   "all_inclusive": false,
+   "ratings": {
+    "google": {
+     "rating": 3.9,
+     "reviews": 7305
+    },
+    "tripadvisor": {
+     "rating": 3.5,
+     "reviews": 3162
+    },
+    "booking": {
+     "rating": 8.0,
+     "reviews": 3353
+    },
+    "expedia": {
+     "rating": 7.9,
+     "reviews": 1329
+    }
+   }
+  },
+  {
+   "name": "Laguna Serena Suites (Demo)",
+   "hotel_class": 5,
+   "latitude": 21.078,
+   "longitude": -86.764,
+   "price_per_night": 483,
+   "all_inclusive": true,
+   "ratings": {
+    "google": {
+     "rating": 4.5,
+     "reviews": 1499
+    },
+    "tripadvisor": {
+     "rating": 4.5,
+     "reviews": 3625
+    },
+    "booking": {
+     "rating": 8.9,
+     "reviews": 1827
+    },
+    "expedia": null
+   }
+  },
+  {
+   "name": "Mangrove Bay Resort (Demo)",
+   "hotel_class": 3,
+   "latitude": 21.09,
+   "longitude": -86.78,
+   "price_per_night": 395,
+   "all_inclusive": true,
+   "ratings": {
+    "google": {
+     "rating": 4.8,
+     "reviews": 5440
+    },
+    "tripadvisor": {
+     "rating": 4.5,
+     "reviews": 3068
+    },
+    "booking": {
+     "rating": 9.3,
+     "reviews": 3540
+    },
+    "expedia": null
+   }
+  },
+  {
+   "name": "Arena Blanca Hotel (Demo)",
+   "hotel_class": 4,
+   "latitude": 21.102,
+   "longitude": -86.776,
+   "price_per_night": 367,
+   "all_inclusive": true,
+   "ratings": {
+    "google": {
+     "rating": 4.2,
+     "reviews": 5372
+    },
+    "tripadvisor": {
+     "rating": 4.5,
+     "reviews": 5780
+    },
+    "booking": {
+     "rating": 8.6,
+     "reviews": 2838
+    },
+    "expedia": {
+     "rating": 8.9,
+     "reviews": 1991
+    }
+   }
+  },
+  {
+   "name": "Caribe Sunset Resort & Spa (Demo)",
+   "hotel_class": 4,
+   "latitude": 21.114,
+   "longitude": -86.772,
+   "price_per_night": 367,
+   "all_inclusive": false,
+   "ratings": {
+    "google": {
+     "rating": 4.6,
+     "reviews": 5009
+    },
+    "tripadvisor": {
+     "rating": 4.5,
+     "reviews": 4267
+    },
+    "booking": null,
+    "expedia": {
+     "rating": 9.3,
+     "reviews": 2350
+    }
+   }
+  },
+  {
+   "name": "Punta Brisa Inn (Demo)",
+   "hotel_class": 4,
+   "latitude": 21.126,
+   "longitude": -86.768,
+   "price_per_night": 463,
+   "all_inclusive": true,
+   "ratings": {
+    "google": {
+     "rating": 4.7,
+     "reviews": 4861
+    },
+    "tripadvisor": {
+     "rating": 5.0,
+     "reviews": 3316
+    },
+    "booking": {
+     "rating": 9.6,
+     "reviews": 718
+    },
+    "expedia": null
+   }
+  },
+  {
+   "name": "Jade Reef Resort (Demo)",
+   "hotel_class": 3,
+   "latitude": 21.138,
+   "longitude": -86.764,
+   "price_per_night": 348,
+   "all_inclusive": true,
+   "ratings": {
+    "google": {
+     "rating": 4.4,
+     "reviews": 3287
+    },
+    "tripadvisor": {
+     "rating": 4.5,
+     "reviews": 3224
+    },
+    "booking": {
+     "rating": 8.6,
+     "reviews": 1405
+    },
+    "expedia": {
+     "rating": 8.5,
+     "reviews": 2629
+    }
+   }
+  },
+  {
+   "name": "Costa Dorada Family Resort (Demo)",
+   "hotel_class": 2,
+   "latitude": 21.15,
+   "longitude": -86.78,
+   "price_per_night": 334,
+   "all_inclusive": true,
+   "ratings": {
+    "google": {
+     "rating": 3.6,
+     "reviews": 6728
+    },
+    "tripadvisor": {
+     "rating": 4.0,
+     "reviews": 3428
+    },
+    "booking": null,
+    "expedia": {
+     "rating": 7.6,
+     "reviews": 955
+    }
+   }
+  },
+  {
+   "name": "Hacienda del Mar Hotel (Demo)",
+   "hotel_class": 5,
+   "latitude": 21.162,
+   "longitude": -86.776,
+   "price_per_night": 436,
+   "all_inclusive": false,
+   "ratings": {
+    "google": {
+     "rating": 4.8,
+     "reviews": 303
+    },
+    "tripadvisor": {
+     "rating": 5.0,
+     "reviews": 4595
+    },
+    "booking": null,
+    "expedia": {
+     "rating": 10.0,
+     "reviews": 2615
+    }
+   }
+  },
+  {
+   "name": "Ocean Pearl Adults Only (Demo)",
+   "hotel_class": 5,
+   "latitude": 21.174,
+   "longitude": -86.772,
+   "price_per_night": 471,
+   "all_inclusive": true,
+   "ratings": {
+    "google": {
+     "rating": 4.8,
+     "reviews": 6266
+    },
+    "tripadvisor": {
+     "rating": 5.0,
+     "reviews": 1144
+    },
+    "booking": {
+     "rating": 9.8,
+     "reviews": 2081
+    },
+    "expedia": {
+     "rating": 9.6,
+     "reviews": 690
+    }
+   }
+  },
+  {
+   "name": "Cenote Garden Hotel (Demo)",
+   "hotel_class": 3,
+   "latitude": 21.186,
+   "longitude": -86.768,
+   "price_per_night": 347,
+   "all_inclusive": true,
+   "ratings": {
+    "google": {
+     "rating": 4.1,
+     "reviews": 2945
+    },
+    "tripadvisor": {
+     "rating": 4.5,
+     "reviews": 3163
+    },
+    "booking": {
+     "rating": 9.1,
+     "reviews": 2324
+    },
+    "expedia": {
+     "rating": 8.5,
+     "reviews": 2733
+    }
+   }
+  },
+  {
+   "name": "Palmar Royal Resort (Demo)",
+   "hotel_class": 3,
+   "latitude": 21.198,
+   "longitude": -86.764,
+   "price_per_night": 334,
+   "all_inclusive": true,
+   "ratings": {
+    "google": {
+     "rating": 4.0,
+     "reviews": 3036
+    },
+    "tripadvisor": {
+     "rating": 4.0,
+     "reviews": 2025
+    },
+    "booking": {
+     "rating": 8.1,
+     "reviews": 1013
+    },
+    "expedia": {
+     "rating": 7.9,
+     "reviews": 899
+    }
+   }
+  }
+ ]
+}
